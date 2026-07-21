@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>계산기</title>
+<style>
+  :root {
+    --blue: #1a56db;
+    --card-bg: #ffffff;
+    --card-border: #e3e6ea;
+    --key-gray: #e8eaed;
+    --key-gray-text: #3c4043;
+    --key-white: #f7f8f9;
+    --key-white-border: #eceef0;
+    --green: #1e8e3e;
+    --green-dark: #17742f;
+    --text-dark: #202124;
+    --text-mute: #9aa0a6;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #f1f3f5;
+    font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", Arial, sans-serif;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .app {
+    width: 100%;
+    max-width: 420px;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  .titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 0 16px;
+  }
+  .tab {
+    background: var(--blue);
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    letter-spacing: 0.5px;
+  }
+  .menu-dots {
+    color: #9aa0a6;
+    font-size: 20px;
+    line-height: 1;
+    padding: 6px;
+    cursor: default;
+    user-select: none;
+  }
+  .display-area {
+    padding: 22px 20px 10px 20px;
+    min-height: 84px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+  }
+  .display {
+    width: 100%;
+    text-align: right;
+    font-size: 42px;
+    color: var(--text-dark);
+    font-weight: 400;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+  .display::-webkit-scrollbar { display: none; }
+  .display.error { color: #d93025; font-size: 30px; }
+  .handle-row {
+    display: flex;
+    justify-content: center;
+    padding: 6px 0 12px 0;
+  }
+  .handle {
+    width: 44px;
+    height: 5px;
+    border-radius: 3px;
+    background: #dadce0;
+  }
+  .keypad {
+    background: #eef0f2;
+    padding: 14px 14px 16px 14px;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+  }
+  button.key {
+    border: none;
+    outline: none;
+    cursor: pointer;
+    height: 44px;
+    border-radius: 22px;
+    font-size: 16px;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: filter 0.1s ease, transform 0.05s ease;
+    padding: 0;
+  }
+  button.key:active {
+    filter: brightness(0.93);
+    transform: scale(0.97);
+  }
+  .key-gray {
+    background: var(--key-gray);
+    color: var(--key-gray-text);
+    font-size: 15px;
+  }
+  .key-white {
+    background: var(--key-white);
+    border: 1px solid var(--key-white-border);
+    color: var(--text-dark);
+  }
+  .key-white.fn {
+    font-size: 15px;
+    color: #3c4043;
+  }
+  .key-ce {
+    background: var(--key-gray);
+    color: var(--green);
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .key-equals {
+    background: var(--green);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .key-equals:active { background: var(--green-dark); }
+  .key-inv.active {
+    background: #d2e3fc;
+    color: var(--blue);
+  }
+  .radeg {
+    grid-column: span 2;
+    background: var(--key-gray);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 14px;
+  }
+  .radeg span {
+    cursor: pointer;
+    color: var(--text-mute);
+    padding: 4px 2px;
+  }
+  .radeg span.active {
+    color: var(--text-dark);
+    font-weight: 700;
+  }
+  .radeg .dot { color: var(--text-mute); }
+  sup { font-size: 0.68em; }
+  .note {
+    text-align: left;
+    font-size: 12px;
+    color: #9aa0a6;
+    margin: 12px 4px 0 4px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <div class="titlebar">
+      <div class="tab">계산기</div>
+      <div class="menu-dots">&#8942;</div>
+    </div>
+    <div class="display-area">
+      <div class="display" id="display">0</div>
+    </div>
+    <div class="handle-row"><div class="handle"></div></div>
+
+    <div class="keypad">
+      <div class="radeg">
+        <span id="rad-label" data-mode="rad">Rad</span>
+        <span class="dot">&middot;</span>
+        <span id="deg-label" data-mode="deg">Deg</span>
+      </div>
+      <button class="key key-inv" id="inv-btn" data-action="inv">Inv</button>
+      <button class="key key-ce" data-action="ce">CE</button>
+      <button class="key key-gray" data-insert="(">(</button>
+      <button class="key key-gray" data-insert=")">)</button>
+      <button class="key key-gray" data-insert="&times;">&times;</button>
+
+      <button class="key key-white fn" id="btn-sin" data-fn="sin">sin</button>
+      <button class="key key-white fn" id="btn-cos" data-fn="cos">cos</button>
+      <button class="key key-white fn" id="btn-tan" data-fn="tan">tan</button>
+      <button class="key key-white" data-insert="7">7</button>
+      <button class="key key-white" data-insert="8">8</button>
+      <button class="key key-white" data-insert="9">9</button>
+      <button class="key key-gray" data-insert="&divide;">&divide;</button>
+
+      <button class="key key-white fn" data-append="!">x!</button>
+      <button class="key key-white fn" id="btn-ln" data-fn="ln">ln</button>
+      <button class="key key-white fn" data-insert="&pi;">&pi;</button>
+      <button class="key key-white" data-insert="4">4</button>
+      <button class="key key-white" data-insert="5">5</button>
+      <button class="key key-white" data-insert="6">6</button>
+      <button class="key key-gray" data-insert="&minus;">&minus;</button>
+
+      <button class="key key-white fn" id="btn-log" data-fn="log">log</button>
+      <button class="key key-white fn" data-insert="e">e</button>
+      <button class="key key-white fn" id="btn-sqrt" data-fn="sqrt">&radic;</button>
+      <button class="key key-white" data-insert="1">1</button>
+      <button class="key key-white" data-insert="2">2</button>
+      <button class="key key-white" data-insert="3">3</button>
+      <button class="key key-gray" data-insert="+">+</button>
+
+      <button class="key key-white fn" data-action="ans">Ans</button>
+      <button class="key key-white fn" data-action="exp">EXP</button>
+      <button class="key key-white fn" data-insert="^">x<sup>y</sup></button>
+      <button class="key key-white" data-insert=".">.</button>
+      <button class="key key-white" data-insert="0">0</button>
+      <button class="key key-gray" data-action="back">&#9003;</button>
+      <button class="key key-equals" data-action="equals">=</button>
+    </div>
+  </div>
+  <div class="note">13번째 유효숫자에서 반올림하며, 15자리 이상의 계산은 오차가 있을 수 있습니다.</div>
+</div>
+
+<script>
+(function () {
+  const display = document.getElementById('display');
+  const invBtn = document.getElementById('inv-btn');
+  const radLabel = document.getElementById('rad-label');
+  const degLabel = document.getElementById('deg-label');
+
+  let input = '';
+  let ans = 0;
+  let isDeg = true;
+  let isInv = false;
+  let justEvaluated = false;
+  let hasError = false;
+
+  const FN_LABELS = {
+    sin: { normal: 'sin', inv: 'sin&#8315;&sup1;' },
+    cos: { normal: 'cos', inv: 'cos&#8315;&sup1;' },
+    tan: { normal: 'tan', inv: 'tan&#8315;&sup1;' },
+    ln:  { normal: 'ln',  inv: 'e<sup>x</sup>' },
+    log: { normal: 'log', inv: '10<sup>x</sup>' },
+    sqrt:{ normal: '&radic;', inv: 'x&sup2;' }
+  };
+
+  function updateInvLabels() {
+    invBtn.classList.toggle('active', isInv);
+    Object.keys(FN_LABELS).forEach(key => {
+      const btn = document.getElementById('btn-' + key);
+      const labelSet = FN_LABELS[key];
+      btn.innerHTML = isInv ? labelSet.inv : labelSet.normal;
+    });
+  }
+
+  function setMode(deg) {
+    isDeg = deg;
+    radLabel.classList.toggle('active', !isDeg);
+    degLabel.classList.toggle('active', isDeg);
+  }
+  setMode(true);
+
+  function render() {
+    display.classList.toggle('error', hasError);
+    display.textContent = input === '' ? '0' : input;
+    display.scrollLeft = display.scrollWidth;
+  }
+
+  const BINARY_OPS = ['+', '−', '×', '÷', '^'];
+
+  function resetIfNeededOnEntry() {
+    if (justEvaluated || hasError) {
+      input = '';
+      justEvaluated = false;
+      hasError = false;
+    }
+  }
+
+  function insertText(text) {
+    if (BINARY_OPS.indexOf(text) !== -1 && justEvaluated && !hasError) {
+      justEvaluated = false;
+    } else {
+      resetIfNeededOnEntry();
+    }
+    input += text;
+    render();
+  }
+
+  function insertFn(name) {
+    resetIfNeededOnEntry();
+    if (isInv) {
+      if (name === 'sin') input += 'asin(';
+      else if (name === 'cos') input += 'acos(';
+      else if (name === 'tan') input += 'atan(';
+      else if (name === 'ln') input += 'e^(';
+      else if (name === 'log') input += '10^(';
+      else if (name === 'sqrt') input += '^2';
+    } else {
+      if (name === 'sqrt') input += 'sqrt(';
+      else input += name + '(';
+    }
+    render();
+  }
+
+  function appendPostfix(sym) {
+    if (input === '' || hasError) return;
+    if (justEvaluated) justEvaluated = false;
+    input += sym;
+    render();
+  }
+
+  function clearAll() {
+    input = '';
+    hasError = false;
+    justEvaluated = false;
+    render();
+  }
+
+  function backspace() {
+    if (justEvaluated || hasError) {
+      clearAll();
+      return;
+    }
+    input = input.slice(0, -1);
+    render();
+  }
+
+  function insertAns() {
+    resetIfNeededOnEntry();
+    input += 'Ans';
+    render();
+  }
+
+  function insertExp() {
+    resetIfNeededOnEntry();
+    input += '×10^';
+    render();
+  }
+
+  // ---------- Parser / Evaluator ----------
+  const FUNCS = ['asin', 'acos', 'atan', 'sin', 'cos', 'tan', 'ln', 'log', 'sqrt'];
+
+  function tokenize(str) {
+    const tokens = [];
+    let i = 0;
+    while (i < str.length) {
+      const c = str[i];
+      if (/\s/.test(c)) { i++; continue; }
+      if (/[0-9.]/.test(c)) {
+        let j = i;
+        while (j < str.length && /[0-9.]/.test(str[j])) j++;
+        const raw = str.slice(i, j);
+        if ((raw.match(/\./g) || []).length > 1) throw new Error('Syntax Error');
+        tokens.push({ type: 'num', value: parseFloat(raw) });
+        i = j;
+        continue;
+      }
+      if (/[a-zA-Z]/.test(c)) {
+        let j = i;
+        while (j < str.length && /[a-zA-Z]/.test(str[j])) j++;
+        tokens.push({ type: 'id', value: str.slice(i, j) });
+        i = j;
+        continue;
+      }
+      if (c === 'π') { tokens.push({ type: 'const', value: 'pi' }); i++; continue; }
+      if (c === '×') { tokens.push({ type: 'op', value: '*' }); i++; continue; }
+      if (c === '÷') { tokens.push({ type: 'op', value: '/' }); i++; continue; }
+      if (c === '−' || c === '-') { tokens.push({ type: 'op', value: '-' }); i++; continue; }
+      if ('+^!()*/'.indexOf(c) !== -1) { tokens.push({ type: 'op', value: c }); i++; continue; }
+      throw new Error('Syntax Error');
+    }
+    return tokens;
+  }
+
+  function createParser(tokens) {
+    let pos = 0;
+    function peek() { return tokens[pos]; }
+    function isOp(tok, val) { return tok && tok.type === 'op' && tok.value === val; }
+
+    function parsePrimary() {
+      const tok = peek();
+      if (!tok) throw new Error('Syntax Error');
+      if (tok.type === 'num') { pos++; return tok.value; }
+      if (tok.type === 'const' && tok.value === 'pi') { pos++; return Math.PI; }
+      if (isOp(tok, '(')) {
+        pos++;
+        const val = parseExpression();
+        if (!isOp(peek(), ')')) throw new Error('Syntax Error');
+        pos++;
+        return val;
+      }
+      if (tok.type === 'id') {
+        const word = tok.value;
+        if (word === 'Ans') { pos++; return ans; }
+        if (word === 'e') { pos++; return Math.E; }
+        if (FUNCS.indexOf(word) !== -1) {
+          pos++;
+          if (!isOp(peek(), '(')) throw new Error('Syntax Error');
+          pos++;
+          const arg = parseExpression();
+          if (!isOp(peek(), ')')) throw new Error('Syntax Error');
+          pos++;
+          return applyFunc(word, arg);
+        }
+        throw new Error('Syntax Error');
+      }
+      throw new Error('Syntax Error');
+    }
+
+    function applyFunc(name, arg) {
+      const toRad = (v) => isDeg ? v * Math.PI / 180 : v;
+      const fromRad = (v) => isDeg ? v * 180 / Math.PI : v;
+      switch (name) {
+        case 'sin': return Math.sin(toRad(arg));
+        case 'cos': return Math.cos(toRad(arg));
+        case 'tan': return Math.tan(toRad(arg));
+        case 'asin': return fromRad(Math.asin(arg));
+        case 'acos': return fromRad(Math.acos(arg));
+        case 'atan': return fromRad(Math.atan(arg));
+        case 'ln': return Math.log(arg);
+        case 'log': return Math.log10(arg);
+        case 'sqrt': return Math.sqrt(arg);
+        default: throw new Error('Syntax Error');
+      }
+    }
+
+    function factorial(n) {
+      if (!Number.isFinite(n) || n < 0 || Math.abs(n - Math.round(n)) > 1e-9) throw new Error('Error');
+      n = Math.round(n);
+      if (n > 170) return Infinity;
+      let result = 1;
+      for (let k = 2; k <= n; k++) result *= k;
+      return result;
+    }
+
+    function parsePostfix() {
+      let value = parsePrimary();
+      while (isOp(peek(), '!')) { pos++; value = factorial(value); }
+      return value;
+    }
+
+    function parseUnary() {
+      if (isOp(peek(), '-')) { pos++; return -parseUnary(); }
+      if (isOp(peek(), '+')) { pos++; return parseUnary(); }
+      return parsePostfix();
+    }
+
+    function parseFactor() {
+      const base = parseUnary();
+      if (isOp(peek(), '^')) {
+        pos++;
+        const exponent = parseFactor();
+        return Math.pow(base, exponent);
+      }
+      return base;
+    }
+
+    function parseTerm() {
+      let value = parseFactor();
+      while (isOp(peek(), '*') || isOp(peek(), '/')) {
+        const opTok = peek(); pos++;
+        const rhs = parseFactor();
+        value = opTok.value === '*' ? value * rhs : value / rhs;
+      }
+      return value;
+    }
+
+    function parseExpression() {
+      let value = parseTerm();
+      while (isOp(peek(), '+') || isOp(peek(), '-')) {
+        const opTok = peek(); pos++;
+        const rhs = parseTerm();
+        value = opTok.value === '+' ? value + rhs : value - rhs;
+      }
+      return value;
+    }
+
+    return {
+      run() {
+        const val = parseExpression();
+        if (pos !== tokens.length) throw new Error('Syntax Error');
+        return val;
+      }
+    };
+  }
+
+  function autoClose(str) {
+    let open = 0;
+    for (const c of str) {
+      if (c === '(') open++;
+      else if (c === ')') open--;
+    }
+    while (open > 0) { str += ')'; open--; }
+    return str;
+  }
+
+  function formatResult(num) {
+    if (!Number.isFinite(num)) return 'Error';
+    if (Number.isInteger(num) && Math.abs(num) < 1e15) return String(num);
+    const rounded = parseFloat(num.toPrecision(12));
+    return String(rounded);
+  }
+
+  function evaluate() {
+    if (input.trim() === '') return;
+    try {
+      const closed = autoClose(input);
+      const tokens = tokenize(closed);
+      const parser = createParser(tokens);
+      const result = parser.run();
+      ans = result;
+      input = formatResult(result);
+      hasError = false;
+      justEvaluated = true;
+    } catch (e) {
+      input = 'Error';
+      hasError = true;
+      justEvaluated = false;
+    }
+    render();
+  }
+
+  // ---------- Event wiring ----------
+  document.querySelectorAll('[data-insert]').forEach(btn => {
+    btn.addEventListener('click', () => insertText(btn.getAttribute('data-insert')));
+  });
+
+  document.querySelectorAll('[data-fn]').forEach(btn => {
+    btn.addEventListener('click', () => insertFn(btn.getAttribute('data-fn')));
+  });
+
+  document.querySelectorAll('[data-append]').forEach(btn => {
+    btn.addEventListener('click', () => appendPostfix(btn.getAttribute('data-append')));
+  });
+
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    const action = btn.getAttribute('data-action');
+    btn.addEventListener('click', () => {
+      if (action === 'ce') clearAll();
+      else if (action === 'back') backspace();
+      else if (action === 'equals') evaluate();
+      else if (action === 'ans') insertAns();
+      else if (action === 'exp') insertExp();
+      else if (action === 'inv') { isInv = !isInv; updateInvLabels(); }
+    });
+  });
+
+  radLabel.addEventListener('click', () => setMode(false));
+  degLabel.addEventListener('click', () => setMode(true));
+
+  document.addEventListener('keydown', (e) => {
+    const k = e.key;
+    if (/[0-9.]/.test(k)) { insertText(k); return; }
+    if (k === '+') { insertText('+'); return; }
+    if (k === '-') { insertText('−'); return; }
+    if (k === '*') { insertText('×'); return; }
+    if (k === '/') { e.preventDefault(); insertText('÷'); return; }
+    if (k === '(' || k === ')') { insertText(k); return; }
+    if (k === '^') { insertText('^'); return; }
+    if (k === '!') { appendPostfix('!'); return; }
+    if (k === 'Enter' || k === '=') { e.preventDefault(); evaluate(); return; }
+    if (k === 'Backspace') { backspace(); return; }
+    if (k === 'Escape') { clearAll(); return; }
+  });
+
+  render();
+  updateInvLabels();
+})();
+</script>
+</body>
+</html>
