@@ -6,10 +6,13 @@ body {
   min-height: 100vh;
   display: flex;
   align-items: center;
+  align-items: safe center;
   justify-content: center;
+  justify-content: safe center;
   padding: 40px;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .blob { position: absolute; border-radius: 50%; pointer-events: none; }
